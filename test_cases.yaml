@@ -1,0 +1,386 @@
+---
+feature: string-support
+cases:
+  - description: non sigiled strings are used directly as strings.
+    json-transform: "a string"
+    output: "a string"
+  - description: "/ is the string sigil, such strings will be used with the / removed."
+    json-transform: "/a string"
+    output: "a string"
+  - description: "this is the way to start a string with a sigil in language, but not have it interpreted"
+    json-transform-template: "/{{}}a string"
+    template-values: ["@", "=", "#", "_", "?", "%", "!"]
+    output-template: "{{}}a string"
+  - description: sigiled strings work as either keys or values of maps
+    json-transform: {"/@key": "/@value"}
+    output: {"@key": "@value"}
+---
+feature: selector-jsonSelect
+selector-syntax: jsonSelect
+default-matches: {"key": "value"}
+cases:
+  - description: "selectors start with the = sigil, this one selects the entire matched document"
+    json-transform: "=:root"
+    output: {"key": "value"}
+  - description: they can be values in objects
+    json-transform: {"body": "=:root"}
+    output: {"body": {"key": "value"}}
+  - description: they can be values in arrays
+    json-transform: ["=:root"]
+    output: [{"key": "value"}]
+  - description: >
+      they can also be used as key values, note that this may require the selector to
+      return a simple value (like a string.)
+
+    json-transform: {"=key-name": "value"}
+    matches: {"key-name": "key"}
+    output: [{"key": "value"}]
+---
+feature: function-syntax
+cases:
+  - description: >
+      function calls are lisp like, If the first item in an array is a symbol, the function with
+      that name will be executed, after selectors are interpreted.
+      Symbols are strings starting with the @ sigil.
+      this one is the identity function, it returns what is passed to it.
+
+    selector-syntax: jsonSelect
+    json-transform: ["@identity", "=.thing"]
+    matches: {"thing": "Hello world!"}
+    output: "Hello world!"
+  - description: >
+      symbols that are not in the JSONTranform document, will not be executed.
+      Hygenic macros may allow for this, but they will have to be fully evaluated before
+      the transform is matched to a target document.  This is a critical security constraint.
+
+    selector-syntax: jsonSelect
+    json-transform: ["=.function", "=.thing"]
+    matches: {"thing": "Hello world!"
+              "function": "@identity"}
+    output: ["@identity", "Hello world!"]
+  - description: "function returns shall not violate this constraint."
+    selector-syntax: jsonSelect
+    json-transform: [["@identity" "=.function"], "=.thing"]
+    matches: {"thing": "Hello world!"
+              "function": "@identity"}
+    output: ["@identity", "Hello world!"]
+  - description: unknown symbols will generate an error
+    json-transform: "@unknown-symbol"
+    error-message-templates:
+      - "unknown symbol: @unknown-symbol"
+  - description: known symbols in unappropriate contexts will generate an error
+    json-transform: ["@as"]
+    error-message-templates:
+      - "unknown function: @as"
+  - description: function names in inaproprate contexts will generate an error
+    json-transform: [1, "@identity"]
+    error-message-templates:
+      - "@identity"
+  - description: this does not mean that a symbol may not be an argument but they must evaluate out.
+    json-transform: [["@identity" "@identity"] "value"]
+    output: "value"
+---
+feature: collection-operations
+cases:
+  - description: assoc turns associative arrays into dicts
+    json-transform:
+      ["@assoc",
+        [["key1", "value1"],
+         ["key2", "value2"]]]
+    output:
+      {"key1": "value1",
+       "key2": "value2"}
+  - description: assoc can take selectors to use to find both the key and the value
+    selector-syntax: jsonSelect
+    json-transform:
+      ["@assoc",
+        [{"key": "key1", "value": "value1"},
+          {"key": "key2", "value": "value2"}],
+        ".key", ".value"]
+    output: {"key1": "value1", "key2": "value2"}
+  - description: deassoc takes a dict and turns it into an associative array
+    json-transform:
+      ["@deassoc",
+        {"key1": "value1",
+         "key2": "value2"}]
+    output:
+      [["key1", "value1"],
+       ["key2", "value2"]]
+  - description: >
+      deassoc takes a template.  It will populate the symbols @key and @value with
+      the key and value respectively
+
+    json-transform:
+      ["@deassoc",
+        {"key1": "value1", "key2": "value2"},
+        {"key": "@key", "value", "@value"}]
+    output:
+      [{"key": "key1", "value": "value1"},
+       {"key": "key2", "value": "value2"}]
+  - description: concat joins arrays
+    json-transform: ["@concat", [1, 2, 3], [4, 5, 6]]
+    output: [1, 2, 3, 4, 5, 6]
+  - description: flatten flatens arrays completely
+    json-transform: ["@flatten", [[1, 2, 3], [[4], 5, 6]]]
+    output: [1, 2, 3, 4, 5, 6]
+  - description: flatten-one flattens an array by only one level
+    json-transform: ["@flatten-one", [[1, 2, 3], [[4], 5, 6]]]
+    output: [1, 2, 3, [4], 5, 6]
+  - description: strip-nulls removes null values
+    json-transform: ["@strip-nulls" [1 null [2 null] 3 4]]
+    output: [1 [2 null] 3 4]
+  - description: strip-nulls-deeply removes null values in nested collections
+    json-transform: ["@strip-nulls-deeply" [1 null [2 null] 3 4]]
+    output: [1 [2] 3 4]
+  - description: strip-nulls removes null values from dicts
+    json-transform: ["@strip-nulls"
+                     {"key": null,
+                      "key2": {"null-key": null, "key": 3}}]
+    output: {"key2": {"null-key": null, "key": 3}}
+  - description: strip-nulls-deeply removes null values in nested collections
+    json-transform: ["@strip-nulls-deeply"
+                     {"key": null,
+                      "key2": {"null-key": null, "key": 3}}]
+    output: {"key2": {"key": 3}}
+  - description: union merges multiple documents+/
+    output: [1, 2, 3, 4, 5, 6]
+---
+feature: sub-transforms
+cases:
+  - description: transform-in transforms subsections of a document
+    not-complete: true
+    selector-syntax: jsonSelect
+    json-transform:
+      ["@transform-in",
+       "document-to-transform",
+       "selector-to-apply-sub-transform-on",
+       "sub-tranform"]
+    matches: {"key": "value"}
+    output: [1, 2, 3, 4, 5, 6]
+  - description: transform runs subtransforms
+    not-complete: true
+    selector-syntax: jsonSelect
+    json-transform: ["@transform", "document-to-transform", "sub-transform"]
+    matches: {"key": "value"}
+    output: [1, 2, 3, 4, 5, 6]
+---
+feature: comparison-operators
+not-complete: true
+---
+feature: asserts
+description: >
+  these functions will either generate an error or return their argument.  The second argument
+  is an optional message.  They need better testing, something that genrates values.
+  Also, are they really needed?
+cases:
+  - description: generates an error on null
+    json-transform: ["@assert-not-null" null]
+    runtime-error: "is null, should not be"
+  - description: assert-number generates an error on anything but a number
+    json-transform: ["@assert-number" null]
+    runtime-error: "is null, should be a number"
+  - description: assert-string generates an error on anything but a string
+    json-transform: ["@assert-string" null]
+    runtime-error: "is null, should be a string"
+  - description: assert-array generates an error on anything but an array
+    json-transform: ["@assert-array" null]
+    runtime-error: "is null, should be an array"
+  - description: assert-dict generates an error on anything but a dict
+    json-transform: ["@assert-dict" null]
+    runtime-error: "is null, should be a dict"
+  - description: assert-boolean generates an error on anything but a boolean value
+    json-transform: ["@assert-boolean" null]
+    runtime-error: "is null, should be a boolean"
+  - description: assert-true generates an error on anything but true
+    json-transform: ["@assert-true" null]
+    runtime-error: "is null, should be true"
+  - description: assert-false generates an error on anything but false
+    json-transform: ["@assert-date" null]
+    runtime-error: "is null, should be false"
+  - description: assert-date generates an error on anything but a date string
+    json-transform: ["@assert-date" null]
+    runtime-error: "is null, should be a date"
+not-complete: true
+---
+feature: math-operators
+not-complete: true
+---
+feature: string operators
+not-complete: true
+cases:
+  - description: join
+    json-transform: ["@join", " ", "Hello", "world!", "It", "is a", "nice", "day"]
+    output: "Hello world! It is a nice day"
+  - description: split
+    json-transform: ["@split", " ", "Hello world! It is a nice day"]
+    output: ["Hello", "world!", "It", "is a", "nice", "day"]
+---
+festure: date-operators
+not-complete: true
+---
+feature: destructuring-support
+description: >
+  JSONTransform supports destructuring like operations that can be used to preform simple operations
+  on an objct.  These can be used to remove keys, keep keys, and include the entire object being
+  transformed.  They are inspired by clojure destructing.
+cases:
+  - description: keys takes the value of keys and keeps the name
+    json-transform: {"@keys": ["key"]}
+    matches: {"key": "value",
+              "key2": "value2"}
+    output: {"key": "value"}
+  - description: >
+      when we can prove that there is a conflict between a destructuring form and a
+      declared key, the JSONTransform is invalid.
+
+    json-transform: {"conflicting-key": "doesn't matter",
+                     "@keys": ["conflicting-key"]}
+    error-message-templates:
+      - "Detected conflict between declared key and @keys destructuring form"
+      - "conflicting-key"
+  - description: "@remove-keys removes keys from a map"
+    json-transform: {"@remove-keys": ["key2"]}
+    matches: {"key": "value",
+              "key2": "value2"}
+    output: {"key": "value"}
+  - description: >
+      when there is a conflict between a declared key, and a destructuring form, the declared key
+      wins.
+
+    json-transform:
+      {"key": "declared-or-selected-value",
+       "@remove-keys": ["bad-key"]}
+    matches:
+      {"key": "loosing-value",
+       "bad-key": "not-selected"
+       "non-conflicting-key": "survives"}
+    output:
+      {"key": "declared-or-selected-value",
+       "non-conflicting-key": "survives"}
+  - description: >
+      when there is a conflict between a selected key, and a destructuring form, the selected key
+      wins.
+    note: >
+      This may need to be changable, after all someone could what a different behavior.
+
+    json-transform:
+      {".bad-key.makes-key-loose": "the-value-that-wins",
+       "@remove-keys": ["bad-key"]}
+    matches:
+      {"key": "loosing-value",
+       "bad-key": {"stuff": "not-selected",
+                   "makes-key-loose": "key"}
+       "non-conflicting-key": "survives"}
+    output:
+      {"key": "the-value-that-wins",
+       "non-conflicting-key": "survives"}
+  - description: as inserts the matched document
+    json-transform: {"@as": "body"}
+    matches: {"key": "value"}
+    output: {"body": {"key": "value"}}
+  - description: remaining includes unmatched portions of the matched document
+    level: 2
+    selector-syntax: jsonSelect
+    json-transform: {"known-key": "=.key",
+                     "@remaining": "unmatched"}
+    matches: {"key": "value",
+              "unknown-key": "unknown"}
+    output: {"known-key": "value",
+             "unmatched": {"unknown-key": "unknown"}}
+  - description: >
+      when we can prove that there is a conflict between a destructuring form and a
+      declared key, the JSONTransform is invalid.
+
+    json-transform-template: {"conflicting-key": "doesn't matter",
+                     "{{}}": "conflicting-key"}
+    template-values:
+      - "@as"
+      - "@remaining"
+    error-message-templates:
+      - "Detected conflict between declared key and {{}} destructuring form"
+      - "conflicting-key"
+  - description: symbols that were selected will not trigger destructuring
+    json-transform: {".keys": ["not-executed-value"]}
+    matches-template:
+      {"keys": "{{}}"
+       "not-executed-value": "not-in-output"
+       "not-included-key": "not-in-output"}
+    template-values:
+      - "@keys"
+      - "@remove-keys"
+    output-template: {"{{}}": ["not-executed-value"]}
+  - description: symbols that were selected will not trigger destructuring
+    json-transform: {".keys": "not-executed-value"}
+    matches-template:
+      {"keys": "{{}}"}
+    template-values:
+      - "@as"
+      - "@remaining"
+    output-template: {"{{}}": "not-executed-value"}
+  - description: Unknown desturcturing forms will cause an error.
+    json-transform: {"@identity": "true"}
+    error-message-templates:
+      - "no known destructuring from: @identity"
+---
+feature: variables
+not-complete: true
+---
+feature: function-definitions
+not-complete: true
+---
+feature: host-language-callbacks
+cases:
+  - description: >
+      Language callbacks are function calls indicated by the % sigil.  The mechanism for registering
+      such callbacks will of course vary based on implementation.  Not all implemetations will
+      support this feature.\n\n
+      this test expects that the test framework implements %default callback which should ensure
+      that its argument is 10, and return 15.
+
+    json-transform: ["%default" 10]
+    output: 15
+  - description: >
+      The language callback feature may also allow you to define destructuring type features, these
+      are indicated by keys in dicts starting with the % sigil, I have no clue as to how they work
+      right now
+
+    level: 2
+    not-complete: true
+  - description: callbacks must be registered before the transform is handled
+    json-transform: ["%unknown-callback" "argument"]
+    error-message-templates:
+      - "unknown callback: %unknown-callback"
+      - "argument"
+  - description: destructuring callbacks must be registered before the transform is handled
+    json-transform: {"%unknown-callback": "arguments"}
+    error-message-templates:
+      - "unknown destructuring callback: %unknown-callback"
+      - "arguments"
+  - description: callbacks in inappropriate contexts will generate an error
+    json-transform-template: "{{}}"
+    template-values:
+      - [1, "%default"]
+      - "%default"
+      - {"%default": [1]}
+      - {"test": "%default"}
+    error-message-templates:
+      - %default
+---
+feature: reserved-sigils
+cases:
+  - description: "?, #, %, !, and _ are reserved sigils"
+    json-transform-templates:
+      -"{{}}"
+    template-values: ["#", "_", "?", "!"]
+    error-message-template: "{{}} is a reserved sigil"
+  - description: "% is reserved for language callbacks and may only occur at the beginning of an array or as a key in a dict"
+    json-transform-template: "{{}}"
+    template-values:
+      - "%"
+      - {"key": "%bad-value"}
+      - [1, "%bad value"]
+      - [1, 2, "%bad value"]
+    error-message-templates:
+      - "% is reserved for language callbacks and may only occur at the beginning of an array or as a key in a dict."
+      - "{{}}"
+
