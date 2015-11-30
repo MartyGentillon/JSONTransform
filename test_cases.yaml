@@ -50,7 +50,7 @@ cases:
     output: "Hello world!"
   - description: >
       symbols that are not in the JSONTranform document, will not be executed.
-      Hygenic macros may allow for this, but they will have to be fully evaluated before
+      Hygienic macros may allow for this, but they will have to be fully evaluated before
       the transform is matched to a target document.  This is a critical security constraint.
 
     selector-syntax: jsonSelect
@@ -154,7 +154,7 @@ cases:
       ["@transform-in",
        "document-to-transform",
        "selector-to-apply-sub-transform-on",
-       "sub-tranform"]
+       "sub-transform"]
     matches: {"key": "value"}
     output: [1, 2, 3, 4, 5, 6]
   - description: transform runs subtransforms
@@ -221,7 +221,7 @@ not-complete: true
 feature: destructuring-support
 description: >
   JSONTransform supports destructuring like operations that can be used to preform simple operations
-  on an objct.  These can be used to remove keys, keep keys, and include the entire object being
+  on an object.  These can be used to remove keys, keep keys, and include the entire object being
   transformed.  They are inspired by clojure destructing.
 cases:
   - description: keys takes the value of keys and keeps the name
@@ -261,7 +261,7 @@ cases:
       when there is a conflict between a selected key, and a destructuring form, the selected key
       wins.
     note: >
-      This may need to be changable, after all someone could what a different behavior.
+      This may need to be changeable, after all someone could what a different behavior.
 
     json-transform:
       {".bad-key.makes-key-loose": "the-value-that-wins",
@@ -332,12 +332,13 @@ feature: host-language-callbacks
 cases:
   - description: >
       Language callbacks are function calls indicated by the % sigil.  The mechanism for registering
-      such callbacks will of course vary based on implementation.  Not all implemetations will
+      such callbacks will of course vary based on implementation.  Not all implementations will
       support this feature.\n\n
       this test expects that the test framework implements %default callback which should ensure
       that its argument is 10, and return 15.
 
     json-transform: ["%default" 10]
+    level: 2
     output: 15
   - description: >
       The language callback feature may also allow you to define destructuring type features, these
@@ -352,12 +353,14 @@ cases:
       - "unknown callback: %unknown-callback"
       - "argument"
   - description: destructuring callbacks must be registered before the transform is handled
+    level: 2
     json-transform: {"%unknown-callback": "arguments"}
     error-message-templates:
       - "unknown destructuring callback: %unknown-callback"
       - "arguments"
   - description: callbacks in inappropriate contexts will generate an error
     json-transform-template: "{{}}"
+    level: 2
     template-values:
       - [1, "%default"]
       - "%default"
