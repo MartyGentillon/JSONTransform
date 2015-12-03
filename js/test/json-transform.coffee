@@ -1,6 +1,6 @@
 assert = require('assert')
 JSONTransform = require('../src/json-transform.coffee')
-
+{describe, it} = require('mocha')
 
 describe "baseline-test", ->
   it "should load jsonTransform", ->
