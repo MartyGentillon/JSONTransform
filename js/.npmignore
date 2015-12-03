@@ -3,3 +3,6 @@ src/
 test/
 reports/
 coverage/
+coffeelint-release.json
+coffeelint.json
+js.iml
