@@ -1,3 +1,5 @@
+require 'mocha-clean/brief'
+
 module.exports = (grunt) ->
   allCoffeeFiles = ['gruntfile.coffee',
     'src/**/*.coffee',
@@ -27,7 +29,7 @@ module.exports = (grunt) ->
         src: allTests
       live:
         options:
-          reporter: 'spec'
+          reporter: 'dot'
         src: allTests
     coffeelint:
       release:
@@ -46,9 +48,15 @@ module.exports = (grunt) ->
         jshintOptions: ['node']
     clean: ['lib', 'reports']
     watch:
-      coffee:
+      build:
         files: allCoffeeFiles
         tasks: ['coffee', 'mochaTest:live', 'coffeelint:dev', 'coffee_jshint']
+      tests:
+        files: allCoffeeFiles
+        tasks: ['mochaTest:live']
+      lint:
+        files: allCoffeeFiles
+        tasks: ['coffeelint:dev', 'coffee_jshint']
 
 
 
