@@ -28,7 +28,6 @@ module.exports = (grunt) ->
       live:
         options:
           reporter: 'spec'
-          clearRequireCache: true
         src: allTests
     coffeelint:
       release:
