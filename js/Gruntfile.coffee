@@ -16,12 +16,12 @@ module.exports = (grunt) ->
         options:
           configFile: 'coffeelint-release.json'
         files:
-            src: ['src/**/*.coffee', 'test/**/*.coffee']
+          src: ['gruntfile.coffee', 'src/**/*.coffee', 'test/**/*.coffee']
       dev:
         options:
           configFile: 'coffeelint.json'
         files:
-            src: ['src/**/*.coffee', 'test/**/*.coffee']
+          src: ['gruntfile.coffee', 'src/**/*.coffee', 'test/**/*.coffee']
 
 
 
