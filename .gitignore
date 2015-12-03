@@ -28,6 +28,7 @@ node_modules/
 
 # built library directory
 /js/lib/
+/js/reports/
 
 ### JetBrains IDE Stuff
 
