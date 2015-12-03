@@ -1,0 +1,42 @@
+{
+  "name": "json-transform",
+  "version": "0.0.0",
+  "description": "A libray for filling templages written in json from other json documents",
+  "author": "Marty Gentillon <marty.gentillon@gmail.com>",
+  "private": true,
+  "scripts": {
+    "test": "grunt test",
+    "prepublish": "grunt"
+  },
+  "main": "lib/json-transform.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MartyGentillon/JSONTranform"
+  },
+  "bugs": {
+    "url": "https://github.com/MartyGentillon/JSONTranform/issues"
+  },
+  "keywords": [
+    "data",
+    "data transformation",
+    "JSON"
+  ],
+  "dependencies": {
+    "debug": "~2.2.0"
+  },
+  "devDependencies": {
+    "coffee-script": "^1.10.0",
+    "coffeelint": "^1.14.1",
+    "grunt": "^0.4.5",
+    "grunt-coffeelint": "0.0.13",
+    "grunt-contrib-coffee": "^0.13.0",
+    "grunt-mocha-test": "^0.12.7",
+    "js-yaml": "^3.4.6",
+    "mocha": "^2.3.4"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MartyGentillon/JSONTranform",
+  "directories": {
+    "test": "test"
+  }
+}
