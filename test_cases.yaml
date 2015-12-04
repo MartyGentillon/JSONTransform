@@ -55,13 +55,13 @@ cases:
 
     selector-syntax: jsonSelect
     json-transform: ["=.function", "=.thing"]
-    matches: {"thing": "Hello world!"
+    matches: {"thing": "Hello world!",
               "function": "@identity"}
     output: ["@identity", "Hello world!"]
   - description: "function returns shall not violate this constraint."
     selector-syntax: jsonSelect
-    json-transform: [["@identity" "=.function"], "=.thing"]
-    matches: {"thing": "Hello world!"
+    json-transform: [["@identity", "=.function"], "=.thing"]
+    matches: {"thing": "Hello world!",
               "function": "@identity"}
     output: ["@identity", "Hello world!"]
   - description: unknown symbols will generate an error
@@ -77,7 +77,7 @@ cases:
     error-message-templates:
       - "@identity"
   - description: this does not mean that a symbol may not be an argument but they must evaluate out.
-    json-transform: [["@identity" "@identity"] "value"]
+    json-transform: [["@identity", "@identity"], "value"]
     output: "value"
 ---
 feature: collection-operations
@@ -127,18 +127,18 @@ cases:
     json-transform: ["@flatten-one", [[1, 2, 3], [[4], 5, 6]]]
     output: [1, 2, 3, [4], 5, 6]
   - description: strip-nulls removes null values
-    json-transform: ["@strip-nulls" [1 null [2 null] 3 4]]
-    output: [1 [2 null] 3 4]
+    json-transform: ["@strip-nulls", [1, null, [2, null], 3, 4]]
+    output: [1, [2, null], 3, 4]
   - description: strip-nulls-deeply removes null values in nested collections
-    json-transform: ["@strip-nulls-deeply" [1 null [2 null] 3 4]]
-    output: [1 [2] 3 4]
+    json-transform: ["@strip-nulls-deeply", [1, null, [2, null], 3, 4]]
+    output: [1, [2], 3, 4]
   - description: strip-nulls removes null values from dicts
-    json-transform: ["@strip-nulls"
+    json-transform: ["@strip-nulls",
                      {"key": null,
                       "key2": {"null-key": null, "key": 3}}]
     output: {"key2": {"null-key": null, "key": 3}}
   - description: strip-nulls-deeply removes null values in nested collections
-    json-transform: ["@strip-nulls-deeply"
+    json-transform: ["@strip-nulls-deeply",
                      {"key": null,
                       "key2": {"null-key": null, "key": 3}}]
     output: {"key2": {"key": 3}}
@@ -166,6 +166,7 @@ cases:
 ---
 feature: comparison-operators
 not-complete: true
+cases: []
 ---
 feature: asserts
 description: >
@@ -174,36 +175,37 @@ description: >
   Also, are they really needed?
 cases:
   - description: generates an error on null
-    json-transform: ["@assert-not-null" null]
+    json-transform: ["@assert-not-null", null]
     runtime-error: "is null, should not be"
   - description: assert-number generates an error on anything but a number
-    json-transform: ["@assert-number" null]
+    json-transform: ["@assert-number", null]
     runtime-error: "is null, should be a number"
   - description: assert-string generates an error on anything but a string
-    json-transform: ["@assert-string" null]
+    json-transform: ["@assert-string", null]
     runtime-error: "is null, should be a string"
   - description: assert-array generates an error on anything but an array
-    json-transform: ["@assert-array" null]
+    json-transform: ["@assert-array", null]
     runtime-error: "is null, should be an array"
   - description: assert-dict generates an error on anything but a dict
-    json-transform: ["@assert-dict" null]
+    json-transform: ["@assert-dict", null]
     runtime-error: "is null, should be a dict"
   - description: assert-boolean generates an error on anything but a boolean value
-    json-transform: ["@assert-boolean" null]
+    json-transform: ["@assert-boolean", null]
     runtime-error: "is null, should be a boolean"
   - description: assert-true generates an error on anything but true
-    json-transform: ["@assert-true" null]
+    json-transform: ["@assert-true", null]
     runtime-error: "is null, should be true"
   - description: assert-false generates an error on anything but false
-    json-transform: ["@assert-date" null]
+    json-transform: ["@assert-date", null]
     runtime-error: "is null, should be false"
   - description: assert-date generates an error on anything but a date string
-    json-transform: ["@assert-date" null]
+    json-transform: ["@assert-date", null]
     runtime-error: "is null, should be a date"
 not-complete: true
 ---
 feature: math-operators
 not-complete: true
+cases: []
 ---
 feature: string operators
 not-complete: true
@@ -217,6 +219,7 @@ cases:
 ---
 festure: date-operators
 not-complete: true
+cases: []
 ---
 feature: destructuring-support
 description: >
@@ -252,7 +255,7 @@ cases:
        "@remove-keys": ["bad-key"]}
     matches:
       {"key": "loosing-value",
-       "bad-key": "not-selected"
+       "bad-key": "not-selected",
        "non-conflicting-key": "survives"}
     output:
       {"key": "declared-or-selected-value",
@@ -269,7 +272,7 @@ cases:
     matches:
       {"key": "loosing-value",
        "bad-key": {"stuff": "not-selected",
-                   "makes-key-loose": "key"}
+                   "makes-key-loose": "key"},
        "non-conflicting-key": "survives"}
     output:
       {"key": "the-value-that-wins",
@@ -302,8 +305,8 @@ cases:
   - description: symbols that were selected will not trigger destructuring
     json-transform: {".keys": ["not-executed-value"]}
     matches-template:
-      {"keys": "{{}}"
-       "not-executed-value": "not-in-output"
+      {"keys": "{{}}",
+       "not-executed-value": "not-in-output",
        "not-included-key": "not-in-output"}
     template-values:
       - "@keys"
@@ -324,9 +327,11 @@ cases:
 ---
 feature: variables
 not-complete: true
+cases: []
 ---
 feature: function-definitions
 not-complete: true
+cases: []
 ---
 feature: host-language-callbacks
 cases:
@@ -337,7 +342,7 @@ cases:
       this test expects that the test framework implements %default callback which should ensure
       that its argument is 10, and return 15.
 
-    json-transform: ["%default" 10]
+    json-transform: ["%default", 10]
     level: 2
     output: 15
   - description: >
@@ -348,7 +353,7 @@ cases:
     level: 2
     not-complete: true
   - description: callbacks must be registered before the transform is handled
-    json-transform: ["%unknown-callback" "argument"]
+    json-transform: ["%unknown-callback", "argument"]
     error-message-templates:
       - "unknown callback: %unknown-callback"
       - "argument"
@@ -367,7 +372,7 @@ cases:
       - {"%default": [1]}
       - {"test": "%default"}
     error-message-templates:
-      - %default
+      - "%default"
 ---
 feature: reserved-sigils
 cases:
